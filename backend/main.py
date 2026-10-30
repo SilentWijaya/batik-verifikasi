@@ -1,85 +1,60 @@
-
-from pathlib import Path
-import hashlib
+import os
 import json
-import sqlite3
+import hashlib
 import urllib.request
-import uuid
+import urllib.error
+from urllib.parse import urlparse, unquote
+from uuid import uuid4
+
+import psycopg
+from psycopg.rows import dict_row
+from supabase import create_client
 
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "batik.db"
-UPLOAD_DIR = BASE_DIR / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
 
-SIGNER_URL = "http://127.0.0.1:8765/record"
+# CONFIGURATION
+DATABASE_URL = os.environ["DATABASE_URL"]
+SUPABASE_URL = os.environ["SUPABASE_URL"]
+SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+
+BUCKET_NAME = "batik-photos"
+SIGNER_URL = os.getenv(
+    "SIGNER_URL",
+    "http://127.0.0.1:8765/record"
+)
+
 MAX_PHOTO_SIZE = 10 * 1024 * 1024
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="Sistem Verifikasi Batik")
 
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+vercel_url = os.getenv("FRONTEND_URL")
+if vercel_url:
+    origins.append(vercel_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-
+# DATABASE
 def connect_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    with connect_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS products (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                artisan TEXT NOT NULL,
-                origin TEXT NOT NULL,
-                technique TEXT NOT NULL,
-                motif TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'Menunggu Verifikasi',
-                blockchain_id TEXT,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        columns = {
-            row["name"]
-            for row in conn.execute("PRAGMA table_info(products)")
-        }
-
-        if "photo_url" not in columns:
-            conn.execute("ALTER TABLE products ADD COLUMN photo_url TEXT")
-
-        if "product_hash" not in columns:
-            conn.execute("ALTER TABLE products ADD COLUMN product_hash TEXT")
-
-        if "blockchain_id" not in columns:
-            conn.execute("ALTER TABLE products ADD COLUMN blockchain_id TEXT")
-
-
-init_db()
-
-
-class ProductCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=150)
-    artisan: str = Field(min_length=1, max_length=150)
-    origin: str = Field(min_length=1, max_length=150)
-    technique: str = Field(min_length=1, max_length=150)
-    motif: str = Field(min_length=1, max_length=150)
+    return psycopg.connect(
+        DATABASE_URL,
+        row_factory=dict_row
+    )
 
 
 @app.get("/")
@@ -89,17 +64,33 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"status": "healthy"}
+    try:
+        with connect_db() as conn:
+            conn.execute("SELECT 1")
+        return {"status": "healthy", "database": "connected"}
+    except Exception as exc:
+        raise HTTPException(500, f"Database error: {exc}")
 
 
 @app.get("/api/products")
 def list_products():
-    with connect_db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM products ORDER BY id DESC"
-        ).fetchall()
+    try:
+        with connect_db() as conn:
+            rows = conn.execute(
+                "SELECT * FROM products ORDER BY id DESC"
+            ).fetchall()
 
-    return {"products": [dict(row) for row in rows]}
+        return {"products": rows}
+    except Exception as exc:
+        raise HTTPException(500, f"Gagal mengambil produk: {exc}")
+
+
+class ProductCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+    artisan: str = Field(min_length=1, max_length=150)
+    origin: str = Field(min_length=1, max_length=150)
+    technique: str = Field(min_length=1, max_length=150)
+    motif: str = Field(min_length=1, max_length=150)
 
 
 @app.post("/api/products", status_code=201)
@@ -115,22 +106,29 @@ def create_product(product: ProductCreate):
     if not all(values):
         raise HTTPException(400, "Semua kolom wajib diisi")
 
-    with connect_db() as conn:
-        cursor = conn.execute("""
-            INSERT INTO products (name, artisan, origin, technique, motif)
-            VALUES (?, ?, ?, ?, ?)
-        """, values)
+    try:
+        with connect_db() as conn:
+            row = conn.execute(
+                """
+                INSERT INTO products
+                (name, artisan, origin, technique, motif)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING *
+                """,
+                values,
+            ).fetchone()
 
-        row = conn.execute(
-            "SELECT * FROM products WHERE id = ?",
-            (cursor.lastrowid,),
-        ).fetchone()
-
-    return dict(row)
+        return row
+    except Exception as exc:
+        raise HTTPException(500, f"Gagal menyimpan produk: {exc}")
 
 
+# PHOTO UPLOAD TO SUPABASE STORAGE
 @app.post("/api/products/{product_id}/photo")
-async def upload_photo(product_id: int, photo: UploadFile = File(...)):
+async def upload_photo(
+    product_id: int,
+    photo: UploadFile = File(...)
+):
     allowed_types = {
         "image/jpeg": ".jpg",
         "image/png": ".png",
@@ -138,63 +136,118 @@ async def upload_photo(product_id: int, photo: UploadFile = File(...)):
     }
 
     extension = allowed_types.get(photo.content_type)
+
     if not extension:
-        raise HTTPException(400, "Gunakan foto JPG, PNG, atau WEBP")
-
-    with connect_db() as conn:
-        product = conn.execute(
-            "SELECT id FROM products WHERE id = ?",
-            (product_id,),
-        ).fetchone()
-
-    if not product:
-        raise HTTPException(404, "Produk tidak ditemukan")
+        raise HTTPException(
+            400,
+            "Gunakan foto JPG, PNG, atau WEBP"
+        )
 
     content = await photo.read(MAX_PHOTO_SIZE + 1)
 
     if not content or len(content) > MAX_PHOTO_SIZE:
-        raise HTTPException(400, "Ukuran foto harus 10 MB atau kurang")
-
-    filename = f"{product_id}_{uuid.uuid4().hex}{extension}"
-    (UPLOAD_DIR / filename).write_bytes(content)
-    photo_url = f"/uploads/{filename}"
-
-    with connect_db() as conn:
-        conn.execute(
-            """
-            UPDATE products
-            SET photo_url = ?, product_hash = NULL, blockchain_id = NULL,
-                status = 'Menunggu Verifikasi'
-            WHERE id = ?
-            """,
-            (photo_url, product_id),
+        raise HTTPException(
+            400,
+            "Ukuran foto harus 10 MB atau kurang"
         )
 
-    return {"message": "Foto berhasil diunggah", "photo_url": photo_url}
+    try:
+        with connect_db() as conn:
+            product = conn.execute(
+                "SELECT id FROM products WHERE id = %s",
+                (product_id,)
+            ).fetchone()
+
+        if not product:
+            raise HTTPException(404, "Produk tidak ditemukan")
+
+        filename = f"{product_id}_{uuid4().hex}{extension}"
+
+        supabase.storage.from_(BUCKET_NAME).upload(
+            filename,
+            content,
+            file_options={
+                "content-type": photo.content_type,
+                "upsert": "true",
+            },
+        )
+
+        photo_url = supabase.storage.from_(
+            BUCKET_NAME
+        ).get_public_url(filename)
+
+        with connect_db() as conn:
+            conn.execute(
+                """
+                UPDATE products
+                SET photo_url = %s,
+                    product_hash = NULL,
+                    blockchain_id = NULL,
+                    status = 'Menunggu Verifikasi'
+                WHERE id = %s
+                """,
+                (photo_url, product_id),
+            )
+
+        return {
+            "message": "Foto berhasil diunggah",
+            "photo_url": photo_url,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            500,
+            f"Gagal mengunggah foto: {exc}"
+        )
 
 
+# DOWNLOAD PHOTO FROM SUPABASE STORAGE
+def get_photo_content(photo_url):
+    marker = f"/storage/v1/object/public/{BUCKET_NAME}/"
+
+    if marker not in photo_url:
+        raise ValueError("URL foto tidak valid")
+
+    filename = unquote(photo_url.split(marker, 1)[1])
+
+    return supabase.storage.from_(
+        BUCKET_NAME
+    ).download(filename)
+
+
+# BLOCKCHAIN VERIFICATION
 @app.post("/api/products/{product_id}/verify")
 def verify_product(product_id: int):
     with connect_db() as conn:
         row = conn.execute(
-            "SELECT * FROM products WHERE id = ?",
-            (product_id,),
+            "SELECT * FROM products WHERE id = %s",
+            (product_id,)
         ).fetchone()
 
     if not row:
         raise HTTPException(404, "Produk tidak ditemukan")
 
-    product = dict(row)
+    product = row
 
     if not product.get("photo_url"):
-        raise HTTPException(400, "Unggah foto produk terlebih dahulu")
+        raise HTTPException(
+            400,
+            "Unggah foto produk terlebih dahulu"
+        )
 
-    photo_path = UPLOAD_DIR / Path(product["photo_url"]).name
+    try:
+        photo_content = get_photo_content(product["photo_url"])
+    except Exception as exc:
+        raise HTTPException(
+            404,
+            f"File foto tidak ditemukan: {exc}"
+        )
 
-    if not photo_path.is_file():
-        raise HTTPException(404, "File foto tidak ditemukan")
-
-    photo_hash = hashlib.sha256(photo_path.read_bytes()).hexdigest()
+    photo_hash = hashlib.sha256(
+        photo_content
+    ).hexdigest()
 
     metadata = {
         "id": product["id"],
@@ -230,29 +283,40 @@ def verify_product(product_id: int):
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=90) as response:
-            result = json.loads(response.read().decode("utf-8"))
+        with urllib.request.urlopen(
+            request,
+            timeout=90
+        ) as response:
+            result = json.loads(
+                response.read().decode("utf-8")
+            )
 
     except Exception as exc:
         raise HTTPException(
             502,
-            f"Gagal mencatat ke Solana. Pastikan layanan signer aktif. Detail: {exc}",
-        ) from exc
+            f"Gagal mencatat ke Solana. Signer belum terhubung: {exc}"
+        )
 
     signature = result.get("signature")
     explorer_url = result.get("explorer_url")
 
     if not signature or not explorer_url:
-        raise HTTPException(502, "Respons signer tidak lengkap")
+        raise HTTPException(
+            502,
+            "Respons signer tidak lengkap"
+        )
 
     with connect_db() as conn:
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE products
-            SET product_hash = ?,
-                blockchain_id = ?,
+            SET product_hash = %s,
+                blockchain_id = %s,
                 status = 'Tercatat di Solana Devnet'
-            WHERE id = ?
-        """, (product_hash, signature, product_id))
+            WHERE id = %s
+            """,
+            (product_hash, signature, product_id),
+        )
 
     return {
         "message": "Hash produk berhasil dikirim ke Solana Devnet",

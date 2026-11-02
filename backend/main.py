@@ -35,11 +35,8 @@ app = FastAPI(title="Sistem Verifikasi Batik")
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://batik-verifikasi.vercel.app",
 ]
-
-vercel_url = os.getenv("FRONTEND_URL")
-if vercel_url:
-    origins.append(vercel_url)
 
 app.add_middleware(
     CORSMiddleware,

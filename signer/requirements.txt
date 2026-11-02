@@ -1,6 +1,4 @@
-@'
 fastapi
 uvicorn
 solana
 solders
-'@ | Set-Content -Encoding utf8 signer/requirements.txt

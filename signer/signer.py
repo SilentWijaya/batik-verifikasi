@@ -1,4 +1,3 @@
-@'
 import os
 import json
 from fastapi import FastAPI, HTTPException
@@ -21,13 +20,16 @@ MEMO_PROGRAM = Pubkey.from_string(
 key_data = json.loads(os.environ["SOLANA_KEYPAIR_JSON"])
 wallet = Keypair.from_bytes(bytes(key_data))
 
+
 class RecordRequest(BaseModel):
     product_id: int
     product_hash: str
 
+
 @app.get("/")
 def home():
     return {"status": "signer aktif"}
+
 
 @app.post("/record")
 def record_product(data: RecordRequest):
@@ -70,4 +72,3 @@ def record_product(data: RecordRequest):
             + signature + "?cluster=devnet"
         )
     }
-'@ | Set-Content -Encoding utf8 signer/signer.py

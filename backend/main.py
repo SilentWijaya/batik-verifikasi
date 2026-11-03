@@ -201,8 +201,7 @@ async def upload_photo(
             f"Gagal mengunggah foto: {exc}"
         )
 
-        ROBOFLOW_API_KEY = os.environ["ROBOFLOW_API_KEY"]
-
+ROBOFLOW_API_KEY = os.environ["ROBOFLOW_API_KEY"]
 ROBOFLOW_WORKSPACE = "rika-bagus-wijaya"
 ROBOFLOW_WORKFLOW = (
     "detect-batik-v1-2-yolov8s-t1-vdetect-batik-v1-2-yolov8s-t1-logic"
@@ -339,7 +338,7 @@ def verify_product(product_id: int):
         "explorer_url": explorer_url,
     }
 
-    # AI BATIK DETECTION
+# AI BATIK DETECTION
 @app.post("/api/predict")
 async def predict_batik(photo: UploadFile = File(...)):
     allowed_types = {

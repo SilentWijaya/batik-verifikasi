@@ -71,6 +71,17 @@ def health():
         raise HTTPException(500, f"Database error: {exc}")
 
 
+@app.get("/api/local-knowledge")
+def list_local_knowledge():
+    try:
+        with connect_db() as conn:
+            rows = conn.execute(
+                "SELECT * FROM local_knowledge ORDER BY id ASC"
+            ).fetchall()
+        return {"knowledge": rows}
+    except Exception as exc:
+        raise HTTPException(500, f"Gagal mengambil pengetahuan lokal: {exc}")
+
 @app.get("/api/products")
 def list_products():
     try:
@@ -382,3 +393,4 @@ async def predict_batik(photo: UploadFile = File(...)):
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+

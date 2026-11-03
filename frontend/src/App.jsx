@@ -13,6 +13,7 @@ const emptyForm = {
 
 export default function App() {
   const [products, setProducts] = useState([]);
+  const [localKnowledge, setLocalKnowledge] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [searchId, setSearchId] = useState("");
   const [searched, setSearched] = useState(false);
@@ -27,6 +28,12 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState("");
 
+  async function loadLocalKnowledge() {
+    const res = await fetch(`${API}/api/local-knowledge`);
+    const data = await res.json();
+    if (!res.ok) throw new Error("Gagal memuat pengetahuan lokal");
+    setLocalKnowledge(data.knowledge || []);
+  }
   async function loadProducts() {
     const res = await fetch(`${API}/api/products`);
     const data = await res.json();
@@ -36,6 +43,7 @@ export default function App() {
 
   useEffect(() => {
     loadProducts().catch((err) => setMessage(err.message));
+    loadLocalKnowledge().catch((err) => setMessage(err.message));
   }, []);
 
   useEffect(() => {
@@ -202,6 +210,12 @@ export default function App() {
   }
 
   function productDetails(p) {
+    const normalizedMotif = String(p.motif || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const matchingKnowledge = localKnowledge.filter((item) => {
+      const motif = String(item.motif || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      return motif === normalizedMotif || motif.endsWith(normalizedMotif);
+    });
+    const knowledge = matchingKnowledge.length === 1 ? matchingKnowledge[0] : null;
     return (
       <>
         {p.photo_url && (
@@ -222,6 +236,17 @@ export default function App() {
         <p><b>Asal:</b> {p.origin}</p>
         <p><b>Teknik:</b> {p.technique}</p>
         <p><b>Motif:</b> {p.motif}</p>
+        {knowledge && (
+          <section style={{ padding: "14px", margin: "14px 0", background: "#f0f5f0", borderRadius: "8px" }}>
+            <h4>Informasi Motif Batik</h4>
+            <p><b>Wilayah:</b> {knowledge.region}</p>
+            <p><b>Teknik:</b> {knowledge.technique || "Belum tersedia"}</p>
+            <p><b>Karakteristik:</b> {knowledge.characteristics || "Belum tersedia"}</p>
+            <p><b>Filosofi:</b> {knowledge.philosophy || "Belum tersedia"}</p>
+            <p><b>Status referensi:</b> {knowledge.verification_status}</p>
+            {knowledge.source && <p><b>Sumber:</b> {knowledge.source}</p>}
+          </section>
+        )}
         <p><b>ID produk:</b> {p.id}</p>
         <p><b>Status:</b> {p.status}</p>
         {p.ai_class && (
@@ -561,6 +586,7 @@ export default function App() {
     </main>
   );
 }
+
 
 
 

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import hashlib
 import urllib.request
@@ -12,7 +12,7 @@ import psycopg
 from psycopg.rows import dict_row
 from supabase import create_client
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -340,7 +340,10 @@ def verify_product(product_id: int):
 
 # AI BATIK DETECTION
 @app.post("/api/predict")
-async def predict_batik(photo: UploadFile = File(...)):
+async def predict_batik(
+    photo: UploadFile = File(...),
+    product_id: int = Form(...)
+):
     allowed_types = {
         "image/jpeg": ".jpg",
         "image/png": ".png",
@@ -348,14 +351,21 @@ async def predict_batik(photo: UploadFile = File(...)):
     }
 
     extension = allowed_types.get(photo.content_type)
-
     if not extension:
         raise HTTPException(400, "Gunakan foto JPG, PNG, atau WEBP")
 
     content = await photo.read(MAX_PHOTO_SIZE + 1)
-
     if not content or len(content) > MAX_PHOTO_SIZE:
         raise HTTPException(400, "Ukuran foto maksimal 10 MB")
+
+    with connect_db() as conn:
+        product = conn.execute(
+            "SELECT id FROM products WHERE id = %s",
+            (product_id,)
+        ).fetchone()
+
+    if not product:
+        raise HTTPException(404, "Produk tidak ditemukan")
 
     temp_path = None
 
@@ -374,17 +384,45 @@ async def predict_batik(photo: UploadFile = File(...)):
             use_cache=True
         )
 
+        predictions = [
+            prediction
+            for item in result
+            for prediction in item.get("predictions", {}).get("predictions", [])
+        ]
+
+        if not predictions:
+            raise HTTPException(422, "Tidak ada jenis batik yang terdeteksi")
+
+        best = max(predictions, key=lambda item: item.get("confidence", 0))
+        ai_class = best.get("class")
+        ai_confidence = best.get("confidence")
+
+        with connect_db() as conn:
+            conn.execute(
+                """
+                UPDATE products
+                SET ai_class = %s, ai_confidence = %s
+                WHERE id = %s
+                """,
+                (ai_class, ai_confidence, product_id)
+            )
+
         return {
-            "message": "Deteksi batik berhasil",
+            "message": "Deteksi batik berhasil dan tersimpan",
+            "product_id": product_id,
+            "ai_class": ai_class,
+            "ai_confidence": ai_confidence,
             "result": result
         }
 
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(
             502,
             f"Gagal menjalankan deteksi Roboflow: {exc}"
         )
-
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+

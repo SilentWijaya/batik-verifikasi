@@ -14,6 +14,7 @@ const emptyForm = {
 export default function App() {
   const [products, setProducts] = useState([]);
   const [localKnowledge, setLocalKnowledge] = useState([]);
+  const [aiKnowledge, setAiKnowledge] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [searchId, setSearchId] = useState("");
   const [searched, setSearched] = useState(false);
@@ -34,6 +35,13 @@ export default function App() {
     if (!res.ok) throw new Error("Gagal memuat pengetahuan lokal");
     setLocalKnowledge(data.knowledge || []);
   }
+  async function loadAiKnowledge() {
+    const res = await fetch(`${API}/api/ai-knowledge`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Gagal memuat pengetahuan AI");
+    setAiKnowledge(data.knowledge || []);
+  }
+
   async function loadProducts() {
     const res = await fetch(`${API}/api/products`);
     const data = await res.json();
@@ -44,6 +52,7 @@ export default function App() {
   useEffect(() => {
     loadProducts().catch((err) => setMessage(err.message));
     loadLocalKnowledge().catch((err) => setMessage(err.message));
+    loadAiKnowledge().catch((err) => setAiMessage(err.message));
   }, []);
 
   useEffect(() => {
@@ -207,6 +216,17 @@ export default function App() {
     } finally {
       setAiLoading(false);
     }
+  }
+
+  function findAiKnowledge(className) {
+    const normalize = (value) =>
+      String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const detected = normalize(className);
+
+    return aiKnowledge.find((item) =>
+      normalize(item.class_name) === detected
+    ) || null;
   }
 
   function findLocalKnowledge(className) {
@@ -457,8 +477,9 @@ export default function App() {
                   }} />
                 </div>
 
+                
                 {(() => {
-                  const knowledge = findLocalKnowledge(prediction.class);
+                  const knowledge = findAiKnowledge(prediction.class);
 
                   return (
                     <div style={{
@@ -467,21 +488,18 @@ export default function App() {
                       background: "#f0f5f0",
                       borderRadius: "8px",
                     }}>
-                      <h4 style={{ marginTop: 0 }}>Pengetahuan Lokal</h4>
+                      <h4 style={{ marginTop: 0 }}>Pengetahuan AI</h4>
                       {knowledge ? (
                         <>
-                          <p><b>Motif:</b> {knowledge.motif}</p>
-                          <p><b>Daerah:</b> {knowledge.region}</p>
-                          <p><b>Teknik:</b> {knowledge.technique || "Belum tersedia"}</p>
-                          <p><b>Karakteristik:</b> {knowledge.characteristics || "Belum tersedia"}</p>
-                          <p><b>Filosofi:</b> {knowledge.philosophy || "Belum tersedia"}</p>
-                          <p><b>Status:</b> {knowledge.verification_status || "Perlu verifikasi"}</p>
-                          {knowledge.source && (
-                            <p><b>Sumber:</b> {knowledge.source}</p>
-                          )}
+                          <p><b>Kelas:</b> {knowledge.class_name}</p>
+                          <p><b>Definisi:</b> {knowledge.definition}</p>
+                          <p><b>Proses Produksi:</b> {knowledge.production_process || "Belum tersedia"}</p>
+                          <p><b>Karakteristik Visual:</b> {knowledge.visual_characteristics || "Belum tersedia"}</p>
+                          <p><b>Catatan Klasifikasi:</b> {knowledge.classification_note || "Belum tersedia"}</p>
+                          {knowledge.source && <p><b>Sumber:</b> {knowledge.source}</p>}
                         </>
                       ) : (
-                        <p>Pengetahuan lokal untuk kelas {prediction.class} belum tersedia.</p>
+                        <p>Pengetahuan AI untuk kelas {prediction.class} belum tersedia.</p>
                       )}
                     </div>
                   );
@@ -631,6 +649,7 @@ export default function App() {
     </main>
   );
 }
+
 
 
 

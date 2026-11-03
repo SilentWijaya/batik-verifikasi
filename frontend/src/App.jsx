@@ -1,7 +1,8 @@
 ﻿import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 
-const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API = "https://batik-verifikasi.onrender.com";
+
 const emptyForm = {
   name: "",
   artisan: "",
@@ -19,6 +20,13 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
+  const [aiPhoto, setAiPhoto] = useState(null);
+  const [aiProductId, setAiProductId] = useState("");
+  const [aiPreview, setAiPreview] = useState("");
+  const [aiResult, setAiResult] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState("");
+
   async function loadProducts() {
     const res = await fetch(`${API}/api/products`);
     const data = await res.json();
@@ -29,6 +37,12 @@ export default function App() {
   useEffect(() => {
     loadProducts().catch((err) => setMessage(err.message));
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (aiPreview) URL.revokeObjectURL(aiPreview);
+    };
+  }, [aiPreview]);
 
   const foundProduct = searched
     ? products.find((p) => String(p.id) === searchId.trim())
@@ -123,6 +137,70 @@ export default function App() {
     }
   }
 
+  function selectAiPhoto(file) {
+    if (!file) return;
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setAiMessage("Gunakan foto JPG, PNG, atau WEBP.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setAiMessage("Ukuran foto maksimal 10 MB.");
+      return;
+    }
+
+    setAiPhoto(file);
+    setAiPreview(URL.createObjectURL(file));
+    setAiResult([]);
+    setAiMessage("");
+  }
+
+  async function detectBatik(e) {
+    e.preventDefault();
+
+    if (!aiPhoto) {
+      setAiMessage("Pilih foto batik terlebih dahulu.");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiMessage("Sedang menganalisis foto...");
+    setAiResult([]);
+
+    try {
+      const body = new FormData();
+      body.append("photo", aiPhoto);
+      body.append("product_id", aiProductId);
+
+      const res = await fetch(`${API}/api/predict`, {
+        method: "POST",
+        body,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Deteksi gagal.");
+      }
+
+      const predictions = (data.result || []).flatMap(
+        (item) => item.predictions?.predictions || []
+      );
+
+      setAiResult(predictions);
+      setAiMessage(
+        predictions.length
+          ? "Analisis berhasil. Berikut hasil prediksi model."
+          : "Model tidak menemukan objek yang terdeteksi."
+      );
+    } catch (err) {
+      setAiMessage(`Gagal melakukan deteksi: ${err.message}`);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function productDetails(p) {
     return (
       <>
@@ -146,6 +224,18 @@ export default function App() {
         <p><b>Motif:</b> {p.motif}</p>
         <p><b>ID produk:</b> {p.id}</p>
         <p><b>Status:</b> {p.status}</p>
+        {p.ai_class && (
+          <div style={{
+            padding: "12px",
+            margin: "12px 0",
+            background: "#f0f5f0",
+            borderRadius: "6px",
+          }}>
+            <p><b>Hasil Analisis AI:</b> {p.ai_class}</p>
+            <p><b>Confidence:</b> {(p.ai_confidence * 100).toFixed(2)}%</p>
+            <small>Confidence adalah tingkat keyakinan model, bukan bukti mutlak keaslian batik.</small>
+          </div>
+        )}
 
         {p.blockchain_id ? (
           <div style={{ overflowWrap: "anywhere" }}>
@@ -235,6 +325,120 @@ export default function App() {
           {message}
         </p>
       )}
+
+      <section style={{
+        padding: "20px",
+        border: "1px solid #ddd",
+        borderRadius: "10px",
+        marginBottom: "28px",
+      }}>
+        <h2>Deteksi Jenis Batik dengan AI</h2>
+        <p>Unggah foto untuk mendeteksi jenis batik menggunakan model Roboflow.</p>
+
+        <form onSubmit={detectBatik}>
+          <label>Pilih Produk:</label>
+          <select
+            value={aiProductId}
+            onChange={(e) => setAiProductId(e.target.value)}
+            style={inputStyle}
+            required
+          >
+            <option value="">-- Pilih produk --</option>
+            {products.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name} (ID: {product.id})
+              </option>
+            ))}
+          </select>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: "block", margin: "14px 0" }}
+            onChange={(e) => selectAiPhoto(e.target.files?.[0])}
+          />
+
+          {aiPreview && (
+            <img
+              src={aiPreview}
+              alt="Preview batik"
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: "400px",
+                maxHeight: "300px",
+                objectFit: "contain",
+                background: "#f5f5f5",
+                borderRadius: "8px",
+                marginBottom: "14px",
+              }}
+            />
+          )}
+
+          <button
+            type="submit"
+            disabled={!aiPhoto || aiLoading}
+            style={{
+              ...buttonStyle,
+              opacity: (!aiPhoto || aiLoading) ? 0.5 : 1,
+            }}
+          >
+            {aiLoading ? "Menganalisis..." : "Deteksi Jenis Batik"}
+          </button>
+        </form>
+
+        {aiMessage && (
+          <p style={{
+            padding: "12px",
+            marginTop: "14px",
+            background: "#f0f5f0",
+            borderRadius: "6px",
+            overflowWrap: "anywhere",
+          }}>
+            {aiMessage}
+          </p>
+        )}
+
+        {aiResult.length > 0 && (
+          <div style={{ marginTop: "18px" }}>
+            <h3>Hasil Prediksi</h3>
+
+            {aiResult.map((prediction, index) => (
+              <div
+                key={prediction.detection_id || index}
+                style={{
+                  padding: "14px",
+                  border: "1px solid #ddd",
+                  borderRadius: "8px",
+                  marginBottom: "10px",
+                }}
+              >
+                <p style={{ margin: "0 0 8px" }}>
+                  <b>Jenis:</b> {prediction.class}
+                </p>
+                <p style={{ margin: "0 0 8px" }}>
+                  <b>Confidence:</b> {(prediction.confidence * 100).toFixed(2)}%
+                </p>
+                <div style={{
+                  height: "10px",
+                  background: "#e5e5e5",
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${Math.min(100, Math.max(0, prediction.confidence * 100))}%`,
+                    height: "100%",
+                    background: "#176b45",
+                  }} />
+                </div>
+              </div>
+            ))}
+
+            <p style={{ fontSize: "13px", color: "#666" }}>
+              Confidence merupakan tingkat keyakinan model, bukan bukti mutlak keaslian batik.
+            </p>
+          </div>
+        )}
+      </section>
 
       <section style={{
         padding: "20px",
@@ -371,4 +575,8 @@ export default function App() {
     </main>
   );
 }
+
+
+
+
 

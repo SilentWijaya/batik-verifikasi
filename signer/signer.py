@@ -1,5 +1,7 @@
-import os
+﻿import os
 import json
+import time
+import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from solders.keypair import Keypair
@@ -47,28 +49,48 @@ def record_product(data: RecordRequest):
         [AccountMeta(wallet.pubkey(), is_signer=True, is_writable=False)]
     )
 
-    latest = client.get_latest_blockhash().value
-    message = Message.new_with_blockhash(
-        [instruction], wallet.pubkey(), latest.blockhash
-    )
-    transaction = Transaction([wallet], message, latest.blockhash)
+    try:
+        latest = None
+        for attempt in range(3):
+            try:
+                latest = client.get_latest_blockhash().value
+                break
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 429 or attempt == 2:
+                    raise
+                time.sleep(2 ** (attempt + 1))
 
-    result = client.send_transaction(
-        transaction,
-        opts=TxOpts(
-            skip_preflight=False,
-            preflight_commitment="confirmed"
+        message = Message.new_with_blockhash(
+            [instruction], wallet.pubkey(), latest.blockhash
         )
-    )
+        transaction = Transaction([wallet], message, latest.blockhash)
 
-    signature = str(result.value)
+        for attempt in range(3):
+            try:
+                result = client.send_transaction(
+                    transaction,
+                    opts=TxOpts(
+                        skip_preflight=False,
+                        preflight_commitment="confirmed"
+                    )
+                )
+                break
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 429 or attempt == 2:
+                    raise
+                time.sleep(2 ** (attempt + 1))
 
-    return {
-        "product_id": data.product_id,
-        "product_hash": data.product_hash,
-        "signature": signature,
-        "explorer_url": (
-            "https://explorer.solana.com/tx/"
-            + signature + "?cluster=devnet"
-        )
-    }
+        signature = str(result.value)
+
+        return {
+            "product_id": data.product_id,
+            "product_hash": data.product_hash,
+            "signature": signature,
+            "explorer_url": (
+                "https://explorer.solana.com/tx/"
+                + signature + "?cluster=devnet"
+            )
+        }
+
+    except Exception as exc:
+        raise HTTPException(502, f"Gagal mencatat transaksi Solana: {exc}")

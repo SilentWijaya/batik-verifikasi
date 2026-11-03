@@ -38,7 +38,7 @@ export default function App() {
   async function loadAiKnowledge() {
     const res = await fetch(`${API}/api/ai-knowledge`);
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Gagal memuat pengetahuan AI");
+    if (!res.ok) throw new Error(data.detail || "Gagal memuat pengetahuan Lokal");
     setAiKnowledge(data.knowledge || []);
   }
 
@@ -499,7 +499,7 @@ export default function App() {
                           {knowledge.source && <p><b>Sumber:</b> {knowledge.source}</p>}
                         </>
                       ) : (
-                        <p>Pengetahuan AI untuk kelas {prediction.class} belum tersedia.</p>
+                        <p>Pengetahuan Lokal untuk kelas {prediction.class} belum tersedia.</p>
                       )}
                     </div>
                   );

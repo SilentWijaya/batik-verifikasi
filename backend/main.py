@@ -340,10 +340,7 @@ def verify_product(product_id: int):
 
 # AI BATIK DETECTION
 @app.post("/api/predict")
-async def predict_batik(
-    photo: UploadFile = File(...),
-    product_id: int = Form(...)
-):
+async def predict_batik(photo: UploadFile = File(...)):
     allowed_types = {
         "image/jpeg": ".jpg",
         "image/png": ".png",
@@ -358,21 +355,10 @@ async def predict_batik(
     if not content or len(content) > MAX_PHOTO_SIZE:
         raise HTTPException(400, "Ukuran foto maksimal 10 MB")
 
-    with connect_db() as conn:
-        product = conn.execute(
-            "SELECT id FROM products WHERE id = %s",
-            (product_id,)
-        ).fetchone()
-
-    if not product:
-        raise HTTPException(404, "Produk tidak ditemukan")
-
     temp_path = None
-
     try:
         with tempfile.NamedTemporaryFile(
-            suffix=extension,
-            delete=False
+            suffix=extension, delete=False
         ) as temp_file:
             temp_file.write(content)
             temp_path = temp_file.name
@@ -384,45 +370,15 @@ async def predict_batik(
             use_cache=True
         )
 
-        predictions = [
-            prediction
-            for item in result
-            for prediction in item.get("predictions", {}).get("predictions", [])
-        ]
-
-        if not predictions:
-            raise HTTPException(422, "Tidak ada jenis batik yang terdeteksi")
-
-        best = max(predictions, key=lambda item: item.get("confidence", 0))
-        ai_class = best.get("class")
-        ai_confidence = best.get("confidence")
-
-        with connect_db() as conn:
-            conn.execute(
-                """
-                UPDATE products
-                SET ai_class = %s, ai_confidence = %s
-                WHERE id = %s
-                """,
-                (ai_class, ai_confidence, product_id)
-            )
-
         return {
-            "message": "Deteksi batik berhasil dan tersimpan",
-            "product_id": product_id,
-            "ai_class": ai_class,
-            "ai_confidence": ai_confidence,
+            "message": "Deteksi batik berhasil",
             "result": result
         }
 
-    except HTTPException:
-        raise
     except Exception as exc:
         raise HTTPException(
-            502,
-            f"Gagal menjalankan deteksi Roboflow: {exc}"
+            502, f"Gagal menjalankan deteksi Roboflow: {exc}"
         )
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
-

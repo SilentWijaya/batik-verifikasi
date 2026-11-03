@@ -336,20 +336,6 @@ export default function App() {
         <p>Unggah foto untuk mendeteksi jenis batik menggunakan model Roboflow.</p>
 
         <form onSubmit={detectBatik}>
-          <label>Pilih Produk:</label>
-          <select
-            value={aiProductId}
-            onChange={(e) => setAiProductId(e.target.value)}
-            style={inputStyle}
-            required
-          >
-            <option value="">-- Pilih produk --</option>
-            {products.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name} (ID: {product.id})
-              </option>
-            ))}
-          </select>
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -575,6 +561,8 @@ export default function App() {
     </main>
   );
 }
+
+
 
 
 

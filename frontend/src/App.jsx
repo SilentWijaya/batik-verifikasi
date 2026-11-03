@@ -209,6 +209,21 @@ export default function App() {
     }
   }
 
+  function findLocalKnowledge(className) {
+    const normalize = (value) =>
+      String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const detected = normalize(className);
+
+    return localKnowledge.find((item) => {
+      const motif = normalize(item.motif);
+      return motif && (
+        motif === detected ||
+        detected.endsWith(motif) ||
+        motif.endsWith(detected)
+      );
+    }) || null;
+  }
   function productDetails(p) {
     const normalizedMotif = String(p.motif || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     const matchingKnowledge = localKnowledge.filter((item) => {
@@ -441,6 +456,36 @@ export default function App() {
                     background: "#176b45",
                   }} />
                 </div>
+
+                {(() => {
+                  const knowledge = findLocalKnowledge(prediction.class);
+
+                  return (
+                    <div style={{
+                      marginTop: "14px",
+                      padding: "12px",
+                      background: "#f0f5f0",
+                      borderRadius: "8px",
+                    }}>
+                      <h4 style={{ marginTop: 0 }}>Pengetahuan Lokal</h4>
+                      {knowledge ? (
+                        <>
+                          <p><b>Motif:</b> {knowledge.motif}</p>
+                          <p><b>Daerah:</b> {knowledge.region}</p>
+                          <p><b>Teknik:</b> {knowledge.technique || "Belum tersedia"}</p>
+                          <p><b>Karakteristik:</b> {knowledge.characteristics || "Belum tersedia"}</p>
+                          <p><b>Filosofi:</b> {knowledge.philosophy || "Belum tersedia"}</p>
+                          <p><b>Status:</b> {knowledge.verification_status || "Perlu verifikasi"}</p>
+                          {knowledge.source && (
+                            <p><b>Sumber:</b> {knowledge.source}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p>Pengetahuan lokal untuk kelas {prediction.class} belum tersedia.</p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
 
@@ -586,6 +631,7 @@ export default function App() {
     </main>
   );
 }
+
 
 
 

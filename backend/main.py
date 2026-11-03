@@ -3,8 +3,10 @@ import json
 import hashlib
 import urllib.request
 import urllib.error
+import tempfile
 from urllib.parse import urlparse, unquote
 from uuid import uuid4
+from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 
 import psycopg
 from psycopg.rows import dict_row
@@ -199,6 +201,20 @@ async def upload_photo(
             f"Gagal mengunggah foto: {exc}"
         )
 
+        ROBOFLOW_API_KEY = os.environ["ROBOFLOW_API_KEY"]
+
+ROBOFLOW_WORKSPACE = "rika-bagus-wijaya"
+ROBOFLOW_WORKFLOW = (
+    "detect-batik-v1-2-yolov8s-t1-vdetect-batik-v1-2-yolov8s-t1-logic"
+)
+
+roboflow = InferenceHTTPClient(
+    api_url="https://serverless.roboflow.com",
+    api_key=ROBOFLOW_API_KEY
+).configure(
+    InferenceConfiguration(api_key_transport="header")
+)
+
 
 # DOWNLOAD PHOTO FROM SUPABASE STORAGE
 def get_photo_content(photo_url):
@@ -322,3 +338,54 @@ def verify_product(product_id: int):
         "signature": signature,
         "explorer_url": explorer_url,
     }
+
+    # AI BATIK DETECTION
+@app.post("/api/predict")
+async def predict_batik(photo: UploadFile = File(...)):
+    allowed_types = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+    }
+
+    extension = allowed_types.get(photo.content_type)
+
+    if not extension:
+        raise HTTPException(400, "Gunakan foto JPG, PNG, atau WEBP")
+
+    content = await photo.read(MAX_PHOTO_SIZE + 1)
+
+    if not content or len(content) > MAX_PHOTO_SIZE:
+        raise HTTPException(400, "Ukuran foto maksimal 10 MB")
+
+    temp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=extension,
+            delete=False
+        ) as temp_file:
+            temp_file.write(content)
+            temp_path = temp_file.name
+
+        result = roboflow.run_workflow(
+            workspace_name=ROBOFLOW_WORKSPACE,
+            workflow_id=ROBOFLOW_WORKFLOW,
+            images={"image": temp_path},
+            use_cache=True
+        )
+
+        return {
+            "message": "Deteksi batik berhasil",
+            "result": result
+        }
+
+    except Exception as exc:
+        raise HTTPException(
+            502,
+            f"Gagal menjalankan deteksi Roboflow: {exc}"
+        )
+
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)

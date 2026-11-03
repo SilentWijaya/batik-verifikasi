@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+solana==0.36.6
+solders==0.26.0

@@ -488,7 +488,7 @@ export default function App() {
                       background: "#f0f5f0",
                       borderRadius: "8px",
                     }}>
-                      <h4 style={{ marginTop: 0 }}>Pengetahuan AI</h4>
+                      <h4 style={{ marginTop: 0 }}>Pengetahuan Lokal</h4>
                       {knowledge ? (
                         <>
                           <p><b>Kelas:</b> {knowledge.class_name}</p>

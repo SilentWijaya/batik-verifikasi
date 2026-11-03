@@ -206,7 +206,7 @@ export default function App() {
       <>
         {p.photo_url && (
           <img
-            src={`${API}${p.photo_url}`}
+            src={p.photo_url.startsWith("http") ? p.photo_url : `${API}${p.photo_url}`}
             alt={`Foto ${p.name}`}
             style={{
               width: "100%",

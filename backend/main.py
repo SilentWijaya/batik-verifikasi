@@ -1,9 +1,17 @@
 ﻿import os
 import json
 import hashlib
-import urllib.request
-import urllib.error
 import tempfile
+import time
+import httpx
+
+from solders.keypair import Keypair
+from solders.pubkey import Pubkey
+from solders.instruction import Instruction, AccountMeta
+from solders.message import Message
+from solders.transaction import Transaction
+from solana.rpc.api import Client
+from solana.rpc.types import TxOpts
 from urllib.parse import urlparse, unquote
 from uuid import uuid4
 from inference_sdk import InferenceHTTPClient, InferenceConfiguration
@@ -23,10 +31,7 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 
 BUCKET_NAME = "batik-photos"
-SIGNER_URL = os.getenv(
-    "SIGNER_URL",
-    "http://127.0.0.1:8765/record"
-)
+
 
 MAX_PHOTO_SIZE = 10 * 1024 * 1024
 
@@ -47,6 +52,76 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SOLANA_CLIENT = Client(
+    os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com")
+)
+
+MEMO_PROGRAM = Pubkey.from_string(
+    "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"
+)
+
+key_data = json.loads(os.environ["SOLANA_KEYPAIR_JSON"])
+WALLET = Keypair.from_bytes(bytes(key_data))
+
+def record_product_on_solana(product_id: int, product_hash: str):
+    if len(product_hash) != 64 or any(
+        c not in "0123456789abcdef"
+        for c in product_hash.lower()
+    ):
+        raise HTTPException(400, "Hash SHA-256 tidak valid")
+
+    memo = f"BATIK:v1:id={product_id}:sha256={product_hash}"
+
+    instruction = Instruction(
+        MEMO_PROGRAM,
+        memo.encode(),
+        [AccountMeta(WALLET.pubkey(), is_signer=True, is_writable=False)]
+    )
+
+    try:
+        latest = None
+        for attempt in range(3):
+            try:
+                latest = SOLANA_CLIENT.get_latest_blockhash().value
+                break
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 429 or attempt == 2:
+                    raise
+                time.sleep(2 ** (attempt + 1))
+
+        message = Message.new_with_blockhash(
+            [instruction], WALLET.pubkey(), latest.blockhash
+        )
+        transaction = Transaction([WALLET], message, latest.blockhash)
+
+        for attempt in range(3):
+            try:
+                result = SOLANA_CLIENT.send_transaction(
+                    transaction,
+                    opts=TxOpts(
+                        skip_preflight=False,
+                        preflight_commitment="confirmed"
+                    )
+                )
+                break
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 429 or attempt == 2:
+                    raise
+                time.sleep(2 ** (attempt + 1))
+
+        signature = str(result.value)
+
+        return {
+            "signature": signature,
+            "explorer_url": (
+                f"https://explorer.solana.com/tx/{signature}?cluster=devnet"
+            )
+        }
+
+    except Exception as exc:
+        raise HTTPException(
+            502, f"Gagal mencatat transaksi Solana: {exc}"
+        )
 
 # DATABASE
 def connect_db():
@@ -305,41 +380,7 @@ def verify_product(product_id: int):
         canonical.encode("utf-8")
     ).hexdigest()
 
-    payload = json.dumps({
-        "product_id": product_id,
-        "product_hash": product_hash,
-    }).encode("utf-8")
-
-    request = urllib.request.Request(
-        SIGNER_URL,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
-    print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
-
-    try:
-        with urllib.request.urlopen(request, timeout=90) as response:
-            print("SIGNER STATUS:", response.status, flush=True)
-            result = json.loads(
-                response.read().decode("utf-8")
-            )
-
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        print("SIGNER HTTP ERROR:", exc.code, body, flush=True)
-        raise HTTPException(
-            502,
-            f"Signer HTTP {exc.code}: {body}"
-        )
-
-    except Exception as exc:
-        print("SIGNER CONNECTION ERROR:", repr(exc), flush=True)
-        raise HTTPException(
-            502,
-            f"Gagal mencatat ke Solana: {exc}"
-        )
+    result = record_product_on_solana(product_id, product_hash)
 
     signature = result.get("signature")
     explorer_url = result.get("explorer_url")
@@ -347,7 +388,7 @@ def verify_product(product_id: int):
     if not signature or not explorer_url:
         raise HTTPException(
             502,
-            "Respons signer tidak lengkap"
+            "Respons transaksi Solana tidak lengkap"
         )
 
     with connect_db() as conn:
@@ -369,6 +410,7 @@ def verify_product(product_id: int):
         "signature": signature,
         "explorer_url": explorer_url,
     }
+
 
 # AI BATIK DETECTION
 @app.post("/api/predict")

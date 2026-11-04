@@ -13,7 +13,7 @@ from solana.rpc.api import Client
 from solana.rpc.types import TxOpts
 
 app = FastAPI()
-client = Client("https://api.devnet.solana.com")
+client = Client(os.getenv("SOLANA_RPC_URL", "https://api.devnet.solana.com"))
 
 MEMO_PROGRAM = Pubkey.from_string(
     "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"

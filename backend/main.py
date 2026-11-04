@@ -323,7 +323,7 @@ def verify_product(product_id: int):
 
 print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
 
-    try:
+try:
     with urllib.request.urlopen(
         request,
         timeout=90

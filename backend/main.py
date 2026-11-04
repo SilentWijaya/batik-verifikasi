@@ -260,15 +260,13 @@ def get_photo_content(photo_url):
 @app.post("/api/products/{product_id}/verify")
 def verify_product(product_id: int):
     with connect_db() as conn:
-        row = conn.execute(
+        product = conn.execute(
             "SELECT * FROM products WHERE id = %s",
             (product_id,)
         ).fetchone()
 
-    if not row:
+    if not product:
         raise HTTPException(404, "Produk tidak ditemukan")
-
-    product = row
 
     if not product.get("photo_url"):
         raise HTTPException(
@@ -284,9 +282,7 @@ def verify_product(product_id: int):
             f"File foto tidak ditemukan: {exc}"
         )
 
-    photo_hash = hashlib.sha256(
-        photo_content
-    ).hexdigest()
+    photo_hash = hashlib.sha256(photo_content).hexdigest()
 
     metadata = {
         "id": product["id"],
@@ -315,38 +311,35 @@ def verify_product(product_id: int):
     }).encode("utf-8")
 
     request = urllib.request.Request(
-    SIGNER_URL,
-    data=payload,
-    headers={"Content-Type": "application/json"},
-    method="POST",
-)
+        SIGNER_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
 
-print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
+    print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
 
-try:
-    with urllib.request.urlopen(
-        request,
-        timeout=90
-    ) as response:
-        print("SIGNER STATUS:", response.status, flush=True)
-        result = json.loads(
-            response.read().decode("utf-8")
-        )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            print("SIGNER STATUS:", response.status, flush=True)
+            result = json.loads(
+                response.read().decode("utf-8")
+            )
 
     except urllib.error.HTTPError as exc:
-    body = exc.read().decode("utf-8", errors="replace")
-    print("SIGNER HTTP ERROR:", exc.code, body, flush=True)
-    raise HTTPException(
-        502,
-        f"Signer HTTP {exc.code}: {body}"
-    )
+        body = exc.read().decode("utf-8", errors="replace")
+        print("SIGNER HTTP ERROR:", exc.code, body, flush=True)
+        raise HTTPException(
+            502,
+            f"Signer HTTP {exc.code}: {body}"
+        )
 
     except Exception as exc:
-    print("SIGNER CONNECTION ERROR:", repr(exc), flush=True)
-    raise HTTPException(
-        502,
-        f"Gagal mencatat ke Solana: {exc}"
-    )
+        print("SIGNER CONNECTION ERROR:", repr(exc), flush=True)
+        raise HTTPException(
+            502,
+            f"Gagal mencatat ke Solana: {exc}"
+        )
 
     signature = result.get("signature")
     explorer_url = result.get("explorer_url")

@@ -315,6 +315,7 @@ def verify_product(product_id: int):
     }).encode("utf-8")
 
     request = urllib.request.Request(
+        print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
         SIGNER_URL,
         data=payload,
         headers={"Content-Type": "application/json"},

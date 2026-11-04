@@ -315,27 +315,38 @@ def verify_product(product_id: int):
     }).encode("utf-8")
 
     request = urllib.request.Request(
-        print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
-        SIGNER_URL,
-        data=payload,
-        headers={"Content-Type": "application/json"},
-        method="POST",
+    SIGNER_URL,
+    data=payload,
+    headers={"Content-Type": "application/json"},
+    method="POST",
+)
+
+print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
+
+try:
+    with urllib.request.urlopen(
+        request,
+        timeout=90
+    ) as response:
+        print("SIGNER STATUS:", response.status, flush=True)
+        result = json.loads(
+            response.read().decode("utf-8")
+        )
+
+except urllib.error.HTTPError as exc:
+    body = exc.read().decode("utf-8", errors="replace")
+    print("SIGNER HTTP ERROR:", exc.code, body, flush=True)
+    raise HTTPException(
+        502,
+        f"Signer HTTP {exc.code}: {body}"
     )
 
-    try:
-        with urllib.request.urlopen(
-            request,
-            timeout=90
-        ) as response:
-            result = json.loads(
-                response.read().decode("utf-8")
-            )
-
-    except Exception as exc:
-        raise HTTPException(
-            502,
-            f"Gagal mencatat ke Solana. Signer belum terhubung: {exc}"
-        )
+except Exception as exc:
+    print("SIGNER CONNECTION ERROR:", repr(exc), flush=True)
+    raise HTTPException(
+        502,
+        f"Gagal mencatat ke Solana: {exc}"
+    )
 
     signature = result.get("signature")
     explorer_url = result.get("explorer_url")

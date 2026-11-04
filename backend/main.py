@@ -323,7 +323,7 @@ def verify_product(product_id: int):
 
 print("SIGNER DIPANGGIL:", SIGNER_URL, flush=True)
 
-try:
+    try:
     with urllib.request.urlopen(
         request,
         timeout=90
@@ -333,7 +333,7 @@ try:
             response.read().decode("utf-8")
         )
 
-except urllib.error.HTTPError as exc:
+    except urllib.error.HTTPError as exc:
     body = exc.read().decode("utf-8", errors="replace")
     print("SIGNER HTTP ERROR:", exc.code, body, flush=True)
     raise HTTPException(
@@ -341,7 +341,7 @@ except urllib.error.HTTPError as exc:
         f"Signer HTTP {exc.code}: {body}"
     )
 
-except Exception as exc:
+    except Exception as exc:
     print("SIGNER CONNECTION ERROR:", repr(exc), flush=True)
     raise HTTPException(
         502,

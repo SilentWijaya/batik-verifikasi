@@ -1,5 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import Navbar from "./components/Navbar";
+import "./App.css";
+import Dashboard from "./components/Dashboard";
+import DetectionAi from "./components/DetectionAi";
 
 const API = "https://batik-verifikasi.onrender.com";
 
@@ -21,6 +25,12 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);
+
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogOrigin, setCatalogOrigin] = useState("Semua Asal");
+  const [catalogPage, setCatalogPage] = useState(1);
+
+  const itemsPerPage = 8;
 
   const [aiPhoto, setAiPhoto] = useState(null);
   const [aiProductId, setAiProductId] = useState("");
@@ -65,25 +75,65 @@ export default function App() {
     ? products.find((p) => String(p.id) === searchId.trim())
     : null;
 
+    // Daftar asal daerah untuk filter katalog
+const catalogOrigins = [
+  ...new Set(products.map((p) => p.origin).filter(Boolean)),
+];
+
+// Filter pencarian dan asal daerah
+const filteredProducts = products.filter((p) => {
+  const keyword = catalogSearch.toLowerCase();
+
+  const matchesSearch = [
+    p.name,
+    p.artisan,
+    p.origin,
+    p.motif,
+  ].some((value) =>
+    String(value || "").toLowerCase().includes(keyword)
+  );
+
+  const matchesOrigin =
+    catalogOrigin === "Semua Asal" ||
+    p.origin === catalogOrigin;
+
+  return matchesSearch && matchesOrigin;
+});
+
+const totalPages = Math.ceil(
+  filteredProducts.length / itemsPerPage
+);
+
+const paginatedProducts = filteredProducts.slice(
+  (catalogPage - 1) * itemsPerPage,
+  catalogPage * itemsPerPage
+);
+
   function productUrl(id) {
     return `${window.location.origin}/?product=${id}`;
   }
 
-  function downloadQR(id) {
-    const svg = document.getElementById(`qr-${id}`);
-    if (!svg) return;
-
-    const data = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([data], {
-      type: "image/svg+xml;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `QR-Batik-${id}.svg`;
-    link.click();
-    URL.revokeObjectURL(url);
+  function downloadQR(id, type = "inspection") {
+  const svg = document.getElementById(`qr-${type}-${id}`);
+  if (!svg) {
+    setMessage("QR Code tidak ditemukan.");
+    return;
   }
+
+  const data = new XMLSerializer().serializeToString(svg);
+  const blob = new Blob([data], {
+    type: "image/svg+xml;charset=utf-8",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `QR-Batik-${id}.svg`;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
 
   async function createProduct(e) {
     e.preventDefault();
@@ -327,9 +377,9 @@ export default function App() {
           border: "1px solid #ddd",
         }}>
           <QRCodeSVG
-            id={`qr-${p.id}`}
-            value={productUrl(p.id)}
-            size={180}
+             id={`qr-inspection-${p.id}`}
+          value={productUrl(p.id)}
+            size={150}
             level="H"
             includeMargin
           />
@@ -337,7 +387,7 @@ export default function App() {
         <br />
         <button
           type="button"
-          onClick={() => downloadQR(p.id)}
+          onClick={() => downloadQR(foundProduct.id, "inspection")}
           style={{ ...buttonStyle, marginTop: "10px" }}
         >
           Unduh QR Code
@@ -365,291 +415,550 @@ export default function App() {
   };
 
   return (
-    <main style={{
-      maxWidth: "1000px",
-      margin: "30px auto",
-      padding: "0 18px",
-      fontFamily: "Arial, sans-serif",
-      color: "#222",
-    }}>
-      <h1>Sistem Verifikasi Batik</h1>
-      <p>Cek identitas batik dan pencatatan hash di blockchain.</p>
+    <>
+    <Navbar />
+
+    <main className="app-container batik-app">
+      <Dashboard products={products} />
 
       {message && (
-        <p style={{
-          padding: "12px",
-          background: "#f0f5f0",
-          borderRadius: "6px",
-          overflowWrap: "anywhere",
-        }}>
+        <div className="app-message">
           {message}
-        </p>
+        </div>
       )}
 
-      <section style={{
-        padding: "20px",
-        border: "1px solid #ddd",
-        borderRadius: "10px",
-        marginBottom: "28px",
-      }}>
-        <h2>Deteksi Jenis Batik dengan AI</h2>
-        <p>Unggah foto untuk mendeteksi jenis batik menggunakan model Roboflow.</p>
+      <DetectionAi
+        aiPhoto={aiPhoto}
+        aiPreview={aiPreview}
+        aiLoading={aiLoading}
+        aiMessage={aiMessage}
+        aiResult={aiResult}
+        selectAiPhoto={selectAiPhoto}
+        detectBatik={detectBatik}
+        findAiKnowledge={findAiKnowledge}
+      />
 
-        <form onSubmit={detectBatik}>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            style={{ display: "block", margin: "14px 0" }}
-            onChange={(e) => selectAiPhoto(e.target.files?.[0])}
-          />
-
-          {aiPreview && (
-            <img
-              src={aiPreview}
-              alt="Preview batik"
-              style={{
-                display: "block",
-                width: "100%",
-                maxWidth: "400px",
-                maxHeight: "300px",
-                objectFit: "contain",
-                background: "#f5f5f5",
-                borderRadius: "8px",
-                marginBottom: "14px",
-              }}
-            />
-          )}
-
-          <button
-            type="submit"
-            disabled={!aiPhoto || aiLoading}
-            style={{
-              ...buttonStyle,
-              opacity: (!aiPhoto || aiLoading) ? 0.5 : 1,
-            }}
-          >
-            {aiLoading ? "Menganalisis..." : "Deteksi Jenis Batik"}
-          </button>
-        </form>
-
-        {aiMessage && (
-          <p style={{
-            padding: "12px",
-            marginTop: "14px",
-            background: "#f0f5f0",
-            borderRadius: "6px",
-            overflowWrap: "anywhere",
-          }}>
-            {aiMessage}
-          </p>
-        )}
-
-        {aiResult.length > 0 && (
-          <div style={{ marginTop: "18px" }}>
-            <h3>Hasil Prediksi</h3>
-
-            {aiResult.map((prediction, index) => (
-              <div
-                key={prediction.detection_id || index}
-                style={{
-                  padding: "14px",
-                  border: "1px solid #ddd",
-                  borderRadius: "8px",
-                  marginBottom: "10px",
-                }}
-              >
-                <p style={{ margin: "0 0 8px" }}>
-                  <b>Jenis:</b> {prediction.class}
-                </p>
-                <p style={{ margin: "0 0 8px" }}>
-                  <b>Confidence:</b> {(prediction.confidence * 100).toFixed(2)}%
-                </p>
-                <div style={{
-                  height: "10px",
-                  background: "#e5e5e5",
-                  borderRadius: "10px",
-                  overflow: "hidden",
-                }}>
-                  <div style={{
-                    width: `${Math.min(100, Math.max(0, prediction.confidence * 100))}%`,
-                    height: "100%",
-                    background: "#176b45",
-                  }} />
-                </div>
-
-                
-                {(() => {
-                  const knowledge = findAiKnowledge(prediction.class);
-
-                  return (
-                    <div style={{
-                      marginTop: "14px",
-                      padding: "12px",
-                      background: "#f0f5f0",
-                      borderRadius: "8px",
-                    }}>
-                      <h4 style={{ marginTop: 0 }}>Pengetahuan Lokal</h4>
-                      {knowledge ? (
-                        <>
-                          <p><b>Kelas:</b> {knowledge.class_name}</p>
-                          <p><b>Definisi:</b> {knowledge.definition}</p>
-                          <p><b>Proses Produksi:</b> {knowledge.production_process || "Belum tersedia"}</p>
-                          <p><b>Karakteristik Visual:</b> {knowledge.visual_characteristics || "Belum tersedia"}</p>
-                          <p><b>Catatan Klasifikasi:</b> {knowledge.classification_note || "Belum tersedia"}</p>
-                          {knowledge.source && <p><b>Sumber:</b> {knowledge.source}</p>}
-                        </>
-                      ) : (
-                        <p>Pengetahuan Lokal untuk kelas {prediction.class} belum tersedia.</p>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            ))}
-
-            <p style={{ fontSize: "13px", color: "#666" }}>
-              Confidence merupakan tingkat keyakinan model, bukan bukti mutlak keaslian batik.
+      {/* 3. PEMERIKSAAN CEPAT */}
+      <section className="batik-section inspection-section" id="cek-keaslian">
+        <div className="batik-section-header inspection-header">
+          <div>
+            <h2 className="batik-section-title">
+              <span className="section-title-icon">⌕</span>
+              Pemeriksaan Cepat & Detail Produk
+            </h2>
+            <p className="batik-section-subtitle">
+              Periksa status produk berdasarkan nomor registrasi batik.
             </p>
           </div>
-        )}
-      </section>
 
-      <section style={{
-        padding: "20px",
-        border: "1px solid #ddd",
-        borderRadius: "10px",
-        marginBottom: "28px",
-      }}>
-        <h2>Cek Keaslian Batik</h2>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          setSearched(true);
-        }}>
-          <label htmlFor="searchId">ID produk</label>
-          <input
-            id="searchId"
-            style={inputStyle}
-            type="number"
-            min="1"
-            required
-            value={searchId}
-            onChange={(e) => {
-              setSearchId(e.target.value);
-              setSearched(false);
+          <form
+            className="inspection-search"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSearched(true);
             }}
-            placeholder="Contoh: 1"
-          />
-          <button type="submit" style={{ ...buttonStyle, marginTop: "12px" }}>
-            Periksa Produk
-          </button>
-        </form>
+          >
+            <label htmlFor="searchId">ID Produk:</label>
+            <input
+              id="searchId"
+              type="number"
+              min="1"
+              required
+              value={searchId}
+              onChange={(e) => {
+                setSearchId(e.target.value);
+                setSearched(false);
+              }}
+              placeholder="Masukkan ID"
+            />
+            <button type="submit" className="batik-button">
+              Periksa Produk
+            </button>
+          </form>
+        </div>
 
         {searched && (
-          <div style={{ marginTop: "20px" }}>
+          <div className="inspection-result">
             {foundProduct ? (
-              productDetails(foundProduct)
+              <div className="inspection-result-content">
+                <div className="inspection-product-image">
+                  {foundProduct.photo_url ? (
+                    <img
+                      src={
+                        foundProduct.photo_url.startsWith("http")
+                          ? foundProduct.photo_url
+                          : `${API}${foundProduct.photo_url}`
+                      }
+                      alt={`Foto ${foundProduct.name}`}
+                    />
+                  ) : (
+                    <div className="no-product-image">
+                      <span>▧</span>
+                      <p>Foto batik belum tersedia</p>
+                    </div>
+                  )}
+                  <span className="image-caption">
+                    Foto Dokumentasi Batik
+                  </span>
+                </div>
+
+                <div className="inspection-product-info">
+                  <div className="product-status-row">
+                    <span className="product-id-badge">
+                      ID #{foundProduct.id}
+                    </span>
+                    <span className={
+                      foundProduct.blockchain_id
+                        ? "status-badge status-verified"
+                        : "status-badge status-pending"
+                    }>
+                      {foundProduct.blockchain_id
+                        ? "Tercatat di Solana Devnet"
+                        : "Belum tercatat di Blockchain"}
+                    </span>
+                  </div>
+
+                  <h3>{foundProduct.name}</h3>
+                  <p className="inspection-motif">
+                    Motif: {foundProduct.motif}
+                  </p>
+
+                  <div className="inspection-metadata">
+                    <div>
+                      <span>Pengrajin</span>
+                      <strong>{foundProduct.artisan}</strong>
+                    </div>
+                    <div>
+                      <span>Asal Daerah</span>
+                      <strong>{foundProduct.origin}</strong>
+                    </div>
+                    <div>
+                      <span>Teknik Pembuatan</span>
+                      <strong>{foundProduct.technique}</strong>
+                    </div>
+                    <div>
+                      <span>Status Produk</span>
+                      <strong>{foundProduct.status || "Terdaftar"}</strong>
+                    </div>
+                  </div>
+
+                  {foundProduct.ai_class && (
+                    <div className="inspection-ai-info">
+                      <strong>Hasil Analisis AI</strong>
+                      <p>{foundProduct.ai_class}</p>
+                      <small>
+                        Confidence: {(foundProduct.ai_confidence * 100).toFixed(2)}%
+                      </small>
+                      <small>
+                        Confidence bukan bukti mutlak keaslian batik.
+                      </small>
+                    </div>
+                  )}
+
+                  {foundProduct.blockchain_id ? (
+                    <div className="hash-container">
+                      <label>Solana Signature / Ledger Hash</label>
+                      <div className="hash-value">
+                        <code>{foundProduct.product_hash}</code>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(foundProduct.product_hash || "");
+                    setMessage("Hash berhasil disalin.");
+                  } catch {
+                    setMessage("Gagal menyalin hash.");
+                  }
+                }}
+                          title="Salin hash"
+                        >
+                          Salin
+                        </button>
+                      </div>
+                      <a
+                        href={`https://explorer.solana.com/tx/${foundProduct.blockchain_id}?cluster=devnet`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="explorer-link"
+                      >
+                        Periksa Transaksi Solana Explorer ↗
+                      </a>
+                    </div>
+                  ) : (
+                    <p className="pending-blockchain">
+                      Produk ini belum memiliki catatan transaksi Solana.
+                    </p>
+                  )}
+
+                
+                </div>
+
+                <div className="inspection-qr-panel">
+                  <span className="qr-panel-title">
+                    QR Fisik Sertifikat
+                  </span>
+                  <div className="qr-preview">
+                    <QRCodeSVG
+                      id={`qr-inspection-${foundProduct.id}`}
+                  value={productUrl(foundProduct.id)}
+                  size={150}
+                  level="H"
+                  includeMargin
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="batik-button qr-download-button"
+                    onClick={() => downloadQR(p.id, "inspection")}
+                  >
+                    Unduh QR Code
+                  </button>
+                  <small>
+                    Siap dicetak sebagai label atau sertifikat batik.
+                  </small>
+                </div>
+              </div>
             ) : (
-              <p>ID produk tidak ditemukan di database.</p>
+              <div className="empty-search-result">
+                ID produk tidak ditemukan di database.
+              </div>
             )}
           </div>
         )}
       </section>
 
-      <details>
-        <summary style={{ cursor: "pointer", fontWeight: "bold" }}>
-          Panel Admin — Kelola Produk
-        </summary>
+      {/* 4. FORM REGISTRASI */}
+      <section className="batik-section registration-section" id="admin-panel">
+        <div className="batik-section-heading">
+          <div>
+            <h2 className="batik-section-title">
+              Tambah Produk Batik & Verifikasi Solana
+            </h2>
+            <p className="batik-section-subtitle">
+              Daftarkan metadata produk batik ke dalam sistem.
+            </p>
+          </div>
+          <span className="curator-label">
+            Formulir Digital Kurator
+          </span>
+        </div>
 
-        <section style={{
-          padding: "20px",
-          border: "1px solid #ddd",
-          borderRadius: "10px",
-          marginTop: "16px",
-        }}>
-          <h2>Tambah Produk Batik</h2>
-          <form onSubmit={createProduct}>
+        <form className="registration-form" onSubmit={createProduct}>
+          <div className="registration-fields">
             {[
-              ["name", "Nama batik"],
-              ["artisan", "Nama pengrajin"],
-              ["origin", "Asal daerah"],
-              ["technique", "Teknik pembuatan"],
-              ["motif", "Motif batik"],
-            ].map(([key, label]) => (
-              <label key={key} style={{
-                display: "block",
-                marginBottom: "12px",
-              }}>
-                {label}
+              ["name", "Nama Batik", "Contoh: Batik Parang Barong"],
+              ["artisan", "Nama Pengrajin / Sanggar", "Nama pengrajin"],
+              ["origin", "Asal Daerah", "Contoh: Yogyakarta"],
+              ["technique", "Teknik Pembuatan", "Contoh: Batik Tulis"],
+              ["motif", "Motif Batik", "Contoh: Parang Rusak"],
+            ].map(([key, label, placeholder]) => (
+              <label
+                key={key}
+                className={`registration-field field-${key}`}
+              >
+                <span>{label} <b>*</b></span>
                 <input
-                  style={inputStyle}
+                  type="text"
+                  placeholder={placeholder}
                   value={form[key]}
                   required
                   maxLength={150}
-                  onChange={(e) => setForm({
-                    ...form,
-                    [key]: e.target.value,
-                  })}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      [key]: e.target.value,
+                    })
+                  }
                 />
               </label>
             ))}
-            <button disabled={loading} style={buttonStyle}>
-              {loading ? "Menyimpan..." : "Tambah Produk"}
-            </button>
-          </form>
-        </section>
 
-        <h2>Daftar Produk ({products.length})</h2>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: "18px",
-        }}>
-          {products.map((p) => (
-            <article key={p.id} style={{
-              padding: "16px",
-              border: "1px solid #ddd",
-              borderRadius: "10px",
-              minWidth: 0,
-            }}>
-              <h3>{p.name}</h3>
-              {productDetails(p)}
-
-              <label style={{ display: "block", margin: "12px 0" }}>
-                Unggah foto batik
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  disabled={busyId === p.id}
-                  style={{ display: "block", marginTop: "8px" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) uploadPhoto(p.id, file);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
+            <div className="registration-actions">
+              <button
+                type="submit"
+                className="batik-button"
+                disabled={loading}
+              >
+                {loading ? "Menyimpan..." : "+ Tambah Produk"}
+              </button>
 
               <button
-                disabled={!p.photo_url || busyId === p.id}
-                onClick={() => verifyProduct(p.id)}
-                style={{
-                  ...buttonStyle,
-                  width: "100%",
-                  opacity: (!p.photo_url || busyId === p.id) ? 0.5 : 1,
-                }}
+                type="button"
+                className="batik-button button-secondary"
+                onClick={() => setForm(emptyForm)}
+                disabled={loading}
               >
-                {busyId === p.id
-                  ? "Memproses..."
-                  : "Verifikasi & Catat ke Solana"}
+                Reset Isian
               </button>
-            </article>
-          ))}
+            </div>
+          </div>
+
+          <aside className="registration-side-panel">
+            <div className="upload-info-card">
+              <div className="side-panel-icon">▧</div>
+              <h3>Dokumentasi Foto Batik</h3>
+              <p>
+                Setelah produk berhasil didaftarkan, unggah foto batik
+                melalui kartu produk pada bagian katalog.
+              </p>
+              <div className="upload-format">
+                JPG · PNG · WEBP
+              </div>
+            </div>
+
+            <div className="solana-info-card">
+              <div className="solana-card-heading">
+                <strong>Verifikasi Solana Devnet</strong>
+                <span>Blockchain</span>
+              </div>
+              <p>
+                Setelah foto produk diunggah, proses verifikasi dapat
+                dijalankan dari katalog untuk mencatat hash produk
+                ke Solana Devnet.
+              </p>
+              <div className="solana-indicator">
+                <span className="solana-dot"></span>
+                Solana Devnet
+              </div>
+            </div>
+
+            <div className="registration-note">
+              <strong>Alur Registrasi</strong>
+              <ol>
+                <li>Isi metadata batik.</li>
+                <li>Tambahkan produk.</li>
+                <li>Unggah foto melalui katalog.</li>
+                <li>Verifikasi dan catat ke Solana.</li>
+              </ol>
+            </div>
+          </aside>
+        </form>
+      </section>
+
+      {/* 5. KATALOG BATIK */}
+      <section className="catalog-section" id="koleksi-batik">
+        <div className="catalog-header">
+          <div>
+            <div className="catalog-title-row">
+              <h2 className="batik-section-title">
+                Daftar Produk Batik
+              </h2>
+              <span className="catalog-count">
+                {products.length} Karya
+              </span>
+            </div>
+            <p className="batik-section-subtitle">
+              Koleksi batik yang telah terdaftar dalam sistem.
+            </p>
+          </div>
+
+          <div className="catalog-filters">
+            <input
+              type="search"
+              placeholder="Cari nama batik / pengrajin..."
+              value={catalogSearch}
+              onChange={(e) => {
+                setCatalogSearch(e.target.value);
+                setCatalogPage(1);
+              }}
+            />
+
+            <select
+              value={catalogOrigin}
+              onChange={(e) => {
+                setCatalogOrigin(e.target.value);
+                setCatalogPage(1);
+              }}
+            >
+              <option value="Semua Asal">Semua Asal</option>
+              {catalogOrigins.map((origin) => (
+                <option key={origin} value={origin}>
+                  {origin}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </details>
+
+        {paginatedProducts.length > 0 ? (
+          <div className="catalog-grid">
+            {paginatedProducts.map((p) => (
+              <article className="batik-product-card" key={p.id}>
+                <div className="product-card-content">
+                  <div className="product-card-top">
+                    <span className="product-id-badge">
+                      ID #{p.id}
+                    </span>
+                    <span className={
+                      p.blockchain_id
+                        ? "status-badge status-verified"
+                        : "status-badge status-pending"
+                    }>
+                      {p.blockchain_id ? "Solana Verified" : "Belum Verified"}
+                    </span>
+                  </div>
+
+                  <div className="catalog-product-image">
+                    {p.photo_url ? (
+                      <img
+                        src={
+                          p.photo_url.startsWith("http")
+                            ? p.photo_url
+                            : `${API}${p.photo_url}`
+                        }
+                        alt={`Foto ${p.name}`}
+                      />
+                    ) : (
+                      <div className="no-product-image">
+                        <span>▧</span>
+                        <p>Foto belum tersedia</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="catalog-product-heading">
+                    <h3>{p.name}</h3>
+                    <p>Motif: {p.motif || "Belum tersedia"}</p>
+                  </div>
+
+                  <div className="catalog-metadata">
+                    <div>
+                      <span>Pengrajin</span>
+                      <strong>{p.artisan}</strong>
+                    </div>
+                    <div>
+                      <span>Asal</span>
+                      <strong>{p.origin}</strong>
+                    </div>
+                    <div>
+                      <span>Teknik</span>
+                      <strong>{p.technique}</strong>
+                    </div>
+                  </div>
+
+                  <div className="catalog-hash">
+                    <span>Hash Solana Tx</span>
+                    <p>
+                      {p.product_hash || "Belum tersedia"}
+                    </p>
+                  </div>
+
+                  <div className="catalog-upload">
+                    <label>
+                      Unggah foto batik
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={busyId === p.id}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) uploadPhoto(p.id, file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <QRCodeSVG
+                 
+              id={`qr-catalog-${p.id}`}
+              value={productUrl(p.id)}
+              size={150}
+              level="H"
+              includeMargin
+              className="catalog-hidden-qr"
+            />
+                  
+                </div>
+
+                <div className="product-card-actions">
+                  <button
+                    type="button"
+                    className="batik-button"
+                    onClick={() => downloadQR(p.id, "catalog")}
+                  >
+                    Unduh QR
+                  </button>
+
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => {
+                      setSearchId(String(p.id));
+                      setSearched(true);
+                      document
+                        .getElementById("cek-keaslian")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                  >
+                  
+                    Detail
+                    </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="verify-product-button"
+                  disabled={!p.photo_url || busyId === p.id}
+                  onClick={() => verifyProduct(p.id)}
+                >
+                  {busyId === p.id
+                    ? "Memproses..."
+                    : p.blockchain_id
+                      ? "Verifikasi Ulang ke Solana"
+                      : "Verifikasi & Catat ke Solana"}
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-catalog">
+            Tidak ada produk yang cocok dengan pencarian.
+          </div>
+        )}
+
+        <div className="catalog-pagination">
+          <span>
+            Menampilkan {paginatedProducts.length} dari {filteredProducts.length} produk
+          </span>
+
+          <div className="pagination-buttons">
+            <button
+              type="button"
+              disabled={catalogPage <= 1}
+              onClick={() => setCatalogPage((page) => page - 1)}
+            >
+              Sebelumnya
+            </button>
+
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+              (page) => (
+                <button
+                  type="button"
+                  key={page}
+                  className={catalogPage === page ? "active" : ""}
+                  onClick={() => setCatalogPage(page)}
+                >
+                  {page}
+                </button>
+              )
+            )}
+
+            <button
+              type="button"
+              disabled={catalogPage >= totalPages}
+              onClick={() => setCatalogPage((page) => page + 1)}
+            >
+              Selanjutnya
+              </button>
+          </div>
+        
+        </div>
+      </section>
     </main>
+    </>
   );
 }
-
 
 
 

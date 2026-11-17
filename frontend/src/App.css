@@ -2354,3 +2354,8 @@ button.logout-button:hover {
   background: #FB4141 !important;
   color: #fff !important;
 }
+
+.navbar-menu a.logout-button:hover {
+  background: #FB4141;
+  color: #fff;
+}

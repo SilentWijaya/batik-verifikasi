@@ -67,6 +67,9 @@ app = FastAPI(
     title="Sistem Verifikasi Batik"
 )
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 # ==================================================
 # 2. CORS CONFIGURATION

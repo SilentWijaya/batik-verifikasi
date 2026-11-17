@@ -2335,7 +2335,7 @@ button {
 .logout-button {
   background: #fff;
   color: #ba1a1a;
-  border: 1px solid #ba1a1a;
+  border: none;
   border-radius: 8px;
   padding: 6px 14px;
   font-size: 13px;

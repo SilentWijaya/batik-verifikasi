@@ -4,6 +4,7 @@ import Navbar from "./components/Navbar";
 import "./App.css";
 import Dashboard from "./components/Dashboard";
 import DetectionAi from "./components/DetectionAi";
+import VerificationQueue from "./components/VerificationQueue";
 
 const API = "https://batik-verifikasi.onrender.com";
 
@@ -734,6 +735,21 @@ const paginatedProducts = filteredProducts.slice(
           </aside>
         </form>
       </section>
+
+            {/* 4b. ANTREAN VERIFIKASI */}
+      <VerificationQueue
+        products={products}
+        busyId={busyId}
+        apiBase={API}
+        onVerify={verifyProduct}
+        onDetail={(id) => {
+          setSearchId(String(id));
+          setSearched(true);
+          document
+            .getElementById("cek-keaslian")
+            ?.scrollIntoView({ behavior: "smooth" });
+        }}
+      />
 
       {/* 5. KATALOG BATIK */}
       <section className="catalog-section" id="koleksi-batik">

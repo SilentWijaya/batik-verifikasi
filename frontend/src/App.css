@@ -1,4 +1,4 @@
-
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
 /* GLOBAL STYLE */
 * {
   box-sizing: border-box;
@@ -682,7 +682,7 @@ button {
 ========================================= */
 
 /* FONT */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
 
 /* BASE SECTION */
 .batik-app {
@@ -2241,3 +2241,93 @@ button {
   background-color: #285b3c;
   color: #ffffff;
 }
+
+.vq-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
+}
+.vq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.vq-header-left { display: flex; gap: 12px; align-items: center; }
+.vq-bar { width: 10px; height: 28px; background: #004528; border-radius: 99px; }
+.vq-title { margin: 0; font-size: 22px; color: #004528; }
+.vq-subtitle { margin: 2px 0 0; font-size: 13px; color: #404942; }
+.vq-pill {
+  background: #fccd78; color: #775607; font-weight: 600;
+  font-size: 12px; padding: 5px 12px; border-radius: 99px;
+}
+
+.vq-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0 12px; }
+.vq-tabs button {
+  border: 0; background: #f0f5f0; color: #404942; cursor: pointer;
+  padding: 7px 14px; border-radius: 8px; font-size: 13px;
+}
+.vq-tabs button.active { background: #115e3b; color: #fff; font-weight: 700; }
+
+.vq-table-wrap { overflow-x: auto; }
+.vq-table { width: 100%; border-collapse: collapse; text-align: left; min-width: 860px; }
+.vq-table thead tr { background: #f0f5f0; font-size: 12px; color: #404942; }
+.vq-table th { padding: 12px 14px; }
+.vq-table td { padding: 14px; vertical-align: top; border-bottom: 1px solid #ebefea; }
+.vq-table tbody tr:hover { background: #f6fbf5; }
+.vq-table td strong, .vq-table td small, .vq-table td span.vq-gold { display: block; }
+.vq-table td small { color: #64748b; font-size: 12px; margin-top: 2px; }
+.vq-gold { color: #7b580b; font-size: 13px; font-weight: 500; }
+.vq-right { text-align: right; }
+.vq-mono { font-family: "JetBrains Mono", monospace; color: #004528; }
+.vq-empty { text-align: center; color: #64748b; padding: 28px !important; }
+
+.vq-idcell { display: flex; align-items: center; gap: 10px; }
+.vq-thumb {
+  width: 56px; height: 56px; border-radius: 8px; overflow: hidden;
+  background: #ebefea; display: flex; align-items: center;
+  justify-content: center; color: #aaa; flex-shrink: 0;
+}
+.vq-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.vq-conf { color: #004528; font-size: 18px; display: flex !important; align-items: center; gap: 6px; }
+.vq-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block; }
+
+.vq-status {
+  display: inline-block; padding: 5px 11px; border-radius: 99px;
+  font-size: 11px; font-weight: 700;
+}
+.vq-ready { background: rgba(252, 205, 120, 0.5); color: #775607; }
+.vq-nophoto { background: #e5e9e4; color: #404942; }
+.vq-verified { background: rgba(17, 94, 59, 0.15); color: #004528; }
+
+.vq-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.vq-btn-primary {
+  background: #004528; color: #fff; border: 0; border-radius: 8px;
+  padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.vq-btn-primary:hover:not(:disabled) { background: #115e3b; }
+.vq-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+.vq-link { text-decoration: none; display: inline-block; }
+.vq-btn-ghost {
+  background: #e5e9e4; color: #404942; border: 0; border-radius: 6px;
+  padding: 5px 10px; font-size: 11px; cursor: pointer;
+}
+
+.vq-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid #ebefea; font-size: 13px; color: #404942;
+}
+.vq-pages { display: flex; gap: 6px; flex-wrap: wrap; }
+.vq-pages button {
+  border: 0; background: #ebefea; border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; font-size: 12px;
+}
+.vq-pages button.active { background: #004528; color: #fff; font-weight: 700; }
+.vq-pages button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.vq-bar { display: none; }

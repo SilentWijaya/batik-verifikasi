@@ -7,3 +7,4 @@ inference-sdk
 psycopg[binary]
 supabase
 python-multipart
+bcrypt

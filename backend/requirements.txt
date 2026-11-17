@@ -1,10 +1,11 @@
 fastapi
 uvicorn
-solana==0.36.6
-solders==0.26.0
+python-multipart
+python-dotenv
 httpx
-inference-sdk
+bcrypt
 psycopg[binary]
 supabase
-python-multipart
-bcrypt
+solana
+solders
+inference-sdk

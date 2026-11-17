@@ -6,6 +6,6 @@ httpx
 bcrypt
 psycopg[binary]
 supabase
-solana
-solders
+solana==0.36.6
+solders==0.26.0
 inference-sdk

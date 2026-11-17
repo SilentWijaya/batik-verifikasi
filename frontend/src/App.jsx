@@ -114,6 +114,19 @@ const paginatedProducts = filteredProducts.slice(
     return `${window.location.origin}/?product=${id}`;
   }
 
+function handleLogout() {
+  if (!window.confirm("Yakin ingin keluar?")) return;
+
+  // Hapus data sesi. Sesuaikan nama key dengan yang dipakai Login.jsx
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("role");
+  sessionStorage.clear();
+
+  window.location.href = "/login";
+}
+
+
   function downloadQR(id, type = "inspection") {
   const svg = document.getElementById(`qr-${type}-${id}`);
   if (!svg) {
@@ -418,7 +431,15 @@ const paginatedProducts = filteredProducts.slice(
   return (
     <>
     <Navbar />
+<Navbar />
 
+<div className="logout-bar">
+  <button type="button" className="logout-button" onClick={handleLogout}>
+    Keluar
+  </button>
+</div>
+
+<main className="app-container batik-app"></main>
     <main className="app-container batik-app">
       <Dashboard products={products} />
 

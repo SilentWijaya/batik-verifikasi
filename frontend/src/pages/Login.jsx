@@ -2,7 +2,7 @@
 import { useState } from "react";
 import "./Login.css";
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = "https://batik-verifikasi.onrender.com";
 
 export default function Login() {
   const [isRegister, setIsRegister] = useState(false);

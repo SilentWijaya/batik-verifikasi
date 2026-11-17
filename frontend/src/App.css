@@ -2342,8 +2342,10 @@ button {
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease;
 }
+
 .logout-button:hover {
-  background: #ba1a1a;
+  background: #FB4141;
   color: #fff;
 }

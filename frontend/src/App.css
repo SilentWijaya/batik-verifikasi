@@ -2349,3 +2349,8 @@ button {
   background: #FB4141;
   color: #fff;
 }
+
+button.logout-button:hover {
+  background: #FB4141 !important;
+  color: #fff !important;
+}

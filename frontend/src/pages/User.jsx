@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import "./User.css";
 
-const API = "http://127.0.0.1:8000";
+const API = "https://batik-verifikasi.onrender.com";
 
 const emptyForm = {
   name: "",

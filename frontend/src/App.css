@@ -2332,20 +2332,16 @@ button {
 
 .vq-bar { display: none; }
 
-.logout-bar {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 24px 0;
-}
 .logout-button {
   background: #fff;
   color: #ba1a1a;
   border: 1px solid #ba1a1a;
   border-radius: 8px;
-  padding: 8px 16px;
+  padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 .logout-button:hover {
   background: #ba1a1a;

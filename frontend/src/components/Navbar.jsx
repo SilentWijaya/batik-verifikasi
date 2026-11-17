@@ -15,6 +15,9 @@ export default function Navbar() {
         <a href="#cek-keaslian">Cek Keaslian</a>
         <a href="#koleksi-batik">Koleksi Batik</a>
         <a href="#admin-panel">Admin Panel</a>
+        <a href="logout" className="logout-button">
+          Keluar
+        </a>
       </nav>
 
       <div className="navbar-status">

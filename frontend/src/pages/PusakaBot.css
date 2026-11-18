@@ -493,3 +493,11 @@
 .pb-root .pb-chip:hover { background: var(--pb-primary) !important; color: #fff !important; }
 .pb-root .pb-icon-btn { background: transparent !important; box-shadow: none !important; }
 .pb-root .pb-input-row input { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; height: auto !important; border-radius: 0 !important; }
+
+/* ===== Semua logo bulat ===== */
+.pb-root .pb-logo,
+.pb-root .pb-logo img,
+.pb-root img.pb-avatar,
+.pb-root .pb-fab-icon img {
+  border-radius: 50% !important;
+}

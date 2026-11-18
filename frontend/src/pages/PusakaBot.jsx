@@ -159,7 +159,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
               <img className="pb-avatar" src="/pusaka-logo.png" alt="" style={{ objectFit: "cover" }} />
               <div className="pb-col">
                 <div className="pb-bubble">
-                  <p className="pb-greet">Rahayu, {userName}!</p>
+                  <p className="pb-greet">Hallo, {userName}!</p>
                   <p>
                     Saya dapat membantu menjelaskan ciri batik tulis dan cap, makna motif, serta cara
                     kerja pencatatan produk di platform ini.

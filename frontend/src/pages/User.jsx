@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import "./User.css";
+import PusakaBot from "./PusakaBot"; 
 
 const API = "https://batik-verifikasi.onrender.com";
 
@@ -569,6 +570,10 @@ async function submitProduct(e) {
           <small>© 2026 Sistem Verifikasi Batik</small>
         </footer>
       </main>
+       <PusakaBot                                   
+        userName={user.name}                       
+        apiUrl={`${API}/api/chat`}                 
+      />                                           
     </div>
   );
 }

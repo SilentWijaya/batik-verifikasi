@@ -460,22 +460,6 @@
   display: block;
 }
 
-/* ===== Perbaikan ukuran logo dan gaya ===== */
-.pb-root .pb-logo { width: 46px; height: 46px; border-radius: 14px; }
-
-.pb-root .pb-logo img,
-.pb-root img.pb-avatar,
-.pb-root .pb-fab-icon img {
-  object-fit: cover !important;
-  object-view-box: inset(22%);
-}
-
-/* ===== Logo bulat dan penuh frame (blok final) ===== */
-.pb-root .pb-window .pb-logo {
-  width: 46px; height: 46px; padding: 0 !important;
-  background: transparent !important;
-  border-radius: 50% !important;
-}
 
 .pb-root .pb-window .pb-logo img,
 .pb-root .pb-window img.pb-avatar,

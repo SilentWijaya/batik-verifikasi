@@ -189,7 +189,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
                 </div>
               ) : (
                 <div className="pb-bot-row" key={i}>
-                  <div className="pb-avatar">✥</div>
+                  <img className="pb-avatar" src="/pusaka-logo.png" alt="" />
                   <div className="pb-col">
                     <div className={"pb-bubble" + (m.error ? " pb-error" : "")}>
                       <FormattedText text={m.content} />
@@ -252,7 +252,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
         aria-expanded={open}
         title={open ? "Tutup PusakaBot AI" : "Buka PusakaBot AI"}
       >
-        <img src="/pusaka-logo.png" alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />
+        <span className="pb-fab-icon"><img src="/pusaka-logo.png" alt="" /></span>
         <strong>Asisten AI</strong>
         <small>Siaga</small>
       </button>

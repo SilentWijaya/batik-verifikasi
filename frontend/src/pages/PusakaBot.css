@@ -470,9 +470,24 @@
   object-view-box: inset(22%);
 }
 
-.pb-root .pb-logo img { width: 100% !important; height: 100% !important; border-radius: 14px !important; }
-.pb-root img.pb-avatar { width: 32px !important; height: 32px !important; border-radius: 10px !important; }
-.pb-root .pb-fab-icon img { width: 36px !important; height: 36px !important; border-radius: 50% !important; }
+/* ===== Logo penuh mengisi frame ===== */
+.pb-root .pb-logo { width: 46px; height: 46px; border-radius: 14px; background: transparent; padding: 0; }
+
+.pb-root .pb-logo img,
+.pb-root img.pb-avatar,
+.pb-root .pb-fab-icon img {
+  display: block;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  object-view-box: inset(16%);   /* potong margin kosong; naikkan jika masih kecil */
+}
+
+.pb-root .pb-logo img        { width: 100% !important; height: 100% !important; border-radius: 14px !important; }
+.pb-root img.pb-avatar       { width: 32px !important; height: 32px !important; border-radius: 10px !important; }
+.pb-root .pb-fab-icon img    { width: 36px !important; height: 36px !important; border-radius: 50% !important; }
 
 .pb-root .pb-chip { background: #fff !important; color: var(--pb-primary) !important; border: 1px solid var(--pb-border) !important; box-shadow: none !important; }
 .pb-root .pb-chip:hover { background: var(--pb-primary) !important; color: #fff !important; }

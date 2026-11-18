@@ -132,7 +132,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
           <header className="pb-header">
             <div className="pb-header-main">
               <div className="pb-logo">
-                <span>🤖</span>
+                <img src="/pusaka-logo.png" alt="" style={{ width: "100%", height: "100%", borderRadius: 12, objectFit: "cover" }} />
                 <i className="pb-dot" />
               </div>
               <div className="pb-title">
@@ -156,7 +156,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
 
           <div className="pb-messages" ref={listRef}>
             <div className="pb-bot-row">
-              <div className="pb-avatar">✥</div>
+              <img className="pb-avatar" src="/pusaka-logo.png" alt="" style={{ objectFit: "cover" }} />
               <div className="pb-col">
                 <div className="pb-bubble">
                   <p className="pb-greet">Rahayu, {userName}!</p>
@@ -252,10 +252,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
         aria-expanded={open}
         title={open ? "Tutup PusakaBot AI" : "Buka PusakaBot AI"}
       >
-        <span className="pb-fab-icon">
-          🤖
-          <i className="pb-dot pb-dot-fab" />
-        </span>
+        <img src="/pusaka-logo.png" alt="" style={{ width: 26, height: 26, borderRadius: "50%", objectFit: "cover" }} />
         <strong>Asisten AI</strong>
         <small>Siaga</small>
       </button>

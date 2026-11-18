@@ -175,7 +175,7 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
                 <div className="pb-chips">
                   {QUICK_QUESTIONS.map((q) => (
                     <button key={q.label} type="button" className="pb-chip" onClick={() => send(q.label)}>
-                      <span>{q.emoji}</span> {q.label}
+                      {q.label}
                     </button>
                   ))}
                 </div>

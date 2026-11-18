@@ -138,7 +138,6 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
               <div className="pb-title">
                 <div className="pb-title-row">
                   <strong>PusakaBot AI</strong>
-                  <span className="pb-badge">Online</span>
                 </div>
                 <small>Asisten Ahli Pakem Batik</small>
               </div>

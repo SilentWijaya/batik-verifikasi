@@ -30,6 +30,7 @@ from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from chat_router import router as chat_router 
 
 
 # ==================================================
@@ -87,6 +88,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(chat_router)   
 
 
 # ==================================================

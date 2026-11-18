@@ -143,14 +143,14 @@ export default function PusakaBot({ apiUrl, userName = "Pengguna", defaultOpen =
               </div>
             </div>
             <button
-              type="button"
-              className="pb-icon-btn"
-              onClick={() => setOpen(false)}
-              aria-label="Tutup chat"
-              title="Tutup chat"
-            >
-              ⌄
-            </button>
+            type="button"
+            className="pb-icon-btn"
+            onClick={() => setOpen(false)}
+            aria-label="Tutup chat"
+            title="Tutup chat"
+          >
+            <img className="pb-close-img" src="/close-icon.svg" alt="" />
+          </button>
           </header>
 
           <div className="pb-messages" ref={listRef}>

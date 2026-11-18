@@ -499,3 +499,10 @@
 .pb-root .pb-chip:hover { background: var(--pb-primary) !important; color: #fff !important; }
 .pb-root .pb-icon-btn { background: transparent !important; box-shadow: none !important; }
 .pb-root .pb-input-row input { border: 0 !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; height: auto !important; border-radius: 0 !important; }
+
+.pb-root .pb-close-img {
+  width: 18px;
+  height: 18px;
+  display: block;
+  filter: brightness(0) invert(1);   
+}
